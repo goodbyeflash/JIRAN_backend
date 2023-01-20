@@ -219,6 +219,7 @@ export const remove = async (ctx) => {
   }
 };
 
+// 암호화
 function encrypt(text) {
   const algorithm = 'aes-256-cbc';
   const key = process.env.ENCRYPTION_KEY;
@@ -237,6 +238,7 @@ function encrypt(text) {
   return crypted;
 }
 
+// 복호화
 function decrypt(text) {
   const algorithm = 'aes-256-cbc';
   const key = process.env.ENCRYPTION_KEY;

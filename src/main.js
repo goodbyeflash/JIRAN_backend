@@ -45,8 +45,8 @@ app.use(async (ctx, next) => {
     if (ctx.get('x-api-key') && ctx.get('x-api-key') != process.env.API_KEY) {
       return;
     }
+    await next();
   }
-  await next();
 });
 
 // 라우터 적용 전에 bodyParser 적용

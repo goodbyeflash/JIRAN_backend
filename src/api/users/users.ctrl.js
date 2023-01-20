@@ -25,7 +25,8 @@ export const list = async (ctx) => {
     const userCount = await User.countDocuments({}).exec();
     ctx.set('Last-Page', Math.ceil(userCount / 10));
     ctx.body = users.map((user) => {
-      user.hp = base64Encoding(user.hp);
+      user.hp = decrypt(user.hp);
+      user.email = decrypt(user.email);
       return user;
     });
   } catch (error) {
@@ -85,7 +86,8 @@ export const register = async (ctx) => {
   }
   let { name, score, hp, email, marketing, publishedDate } = ctx.request.body;
 
-  hp = base64Decoding(hp);
+  hp = encrypt(hp);
+  email = encrypt(email);
 
   const exist = await User.findOne({
     hp: hp,
@@ -103,9 +105,6 @@ export const register = async (ctx) => {
     if (ip.indexOf('::ffff:') > -1) {
       ip = ip.replace('::ffff:', '');
     }
-
-    // const decryptResult = decrypt(encryptResult)
-    // console.log('decrypt result:', decryptResult)
 
     const user = new User({
       name,
@@ -190,7 +189,8 @@ export const update = async (ctx) => {
 
   try {
     let nextData = { ...ctx.request.body }; // 객체를 복사하고 body 값이 주어졌으면 HTML 필터링
-    nextData.hp = base64Decoding(nextData.hp);
+    nextData.hp = encrypt(nextData.hp);
+    nextData.email = encrypt(nextData.email);
 
     const updateUser = await User.findByIdAndUpdate(_id, nextData, {
       new: true, // 이 값을 설정하면 업데이트된 데이터를 반환합니다.
@@ -219,10 +219,38 @@ export const remove = async (ctx) => {
   }
 };
 
-function base64Encoding(val) {
-  return Buffer.from(val, 'utf8').toString('base64');
+function encrypt(text) {
+  const algorithm = 'aes-256-cbc';
+  const key = process.env.ENCRYPTION_KEY;
+
+  const secretKeyToByteArray = Buffer.from(key, 'utf-8');
+  const ivParameter = Buffer.from(key.slice(0, 16));
+
+  var cipher = crypto.createCipheriv(
+    algorithm,
+    secretKeyToByteArray,
+    ivParameter
+  );
+  var crypted = cipher.update(text, 'utf8', 'base64');
+  crypted += cipher.final('base64');
+
+  return crypted;
 }
 
-function base64Decoding(val) {
-  return Buffer.from(val, 'base64').toString('utf8');
+function decrypt(text) {
+  const algorithm = 'aes-256-cbc';
+  const key = process.env.ENCRYPTION_KEY;
+
+  const secretKeyToByteArray = Buffer.from(key, 'utf-8');
+  const ivParameter = Buffer.from(key.slice(0, 16));
+
+  var cipher = crypto.createDecipheriv(
+    algorithm,
+    secretKeyToByteArray,
+    ivParameter
+  );
+  var crypted = cipher.update(text, 'base64', 'utf8');
+  crypted += cipher.final('utf8');
+
+  return crypted;
 }

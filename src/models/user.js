@@ -7,6 +7,7 @@ const UserSchema = new Schema({
   hp: String,
   email: String,
   marketing: String,
+  ip: String,
   publishedDate: Date,
 });
 

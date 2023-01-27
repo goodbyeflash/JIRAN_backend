@@ -17,8 +17,35 @@ export const list = async (ctx) => {
   }
 
   try {
-    const users = await User.find({})
+    const users = await User.find({}, { name: 1, score: 1 })
       .sort({ score: -1 })
+      .limit(10)
+      .skip((page - 1) * 10)
+      .exec();
+    const userCount = await User.countDocuments({}).exec();
+    ctx.set('Last-Page', Math.ceil(userCount / 10));
+    ctx.body = users.map((user) => user.toJSON());
+  } catch (error) {
+    ctx.throw(500, error);
+  }
+};
+
+/*
+  GET /api/users/adminList?page=
+*/
+export const adminList = async (ctx) => {
+  // query는 문자열이기 때문에 숫자로 변환해 주어야 합니다.
+  // 값이 주어지지 않았다면 1을 기본으로 사용합니다.
+  const page = parseInt(ctx.query.page || '1', 10);
+
+  if (page < 1) {
+    ctx.status = 400;
+    return;
+  }
+
+  try {
+    const users = await User.find({})
+      .sort({ publishedDate: 1 })
       .limit(10)
       .skip((page - 1) * 10)
       .exec();
@@ -135,6 +162,9 @@ export const find = async (ctx) => {
   const body = ctx.request.body || {};
   if (Object.keys(body).length > 0) {
     const key = Object.keys(body)[0];
+    if (key == 'hp' || key == 'email') {
+      body[key] = encrypt(body[key]);
+    }
     body[key] = { $regex: '.*' + body[key] + '.*' };
   }
   const page = parseInt(ctx.query.page || '1', 10);
@@ -146,20 +176,24 @@ export const find = async (ctx) => {
 
   try {
     const users = await User.find(body)
-      .sort({ score: -1 })
+      .sort({ publishedDate: 1 })
       .limit(10)
       .skip((page - 1) * 10)
       .exec();
     const userCount = await User.countDocuments(body).exec();
     ctx.set('Last-Page', Math.ceil(userCount / 10));
-    ctx.body = users.map((user) => user.toJSON());
+    ctx.body = users.map((user) => {
+      user.hp = decrypt(user.hp);
+      user.email = decrypt(user.email);
+      return user;
+    });
   } catch (error) {
     ctx.throw(500, error);
   }
 };
 
 /*
-  PATCH /api/user/:_id
+  PATCH /api/users/:_id
   {
     "name" : "",
     "score" : "",
@@ -207,12 +241,25 @@ export const update = async (ctx) => {
 };
 
 /*
-  DELETE /api/user/:_id
+  DELETE /api/users/:_id
 */
 export const remove = async (ctx) => {
   const { _id } = ctx.params;
   try {
     await User.findByIdAndRemove(_id).exec();
+    ctx.status = 204; // No Content (성공하기는 했지만 응답할 데이터는 없음)
+  } catch (error) {
+    ctx.throw(500, error);
+  }
+};
+
+/*
+  DELETE /api/users/
+*/
+export const removeAll = async (ctx) => {
+  const { _id } = ctx.params;
+  try {
+    await User.remove().exec();
     ctx.status = 204; // No Content (성공하기는 했지만 응답할 데이터는 없음)
   } catch (error) {
     ctx.throw(500, error);

@@ -4,26 +4,16 @@ import requsetIp from 'request-ip';
 import crypto from 'crypto';
 
 /*
-  GET /api/users?page=
+  GET /api/users
 */
 export const list = async (ctx) => {
   // query는 문자열이기 때문에 숫자로 변환해 주어야 합니다.
   // 값이 주어지지 않았다면 1을 기본으로 사용합니다.
-  const page = parseInt(ctx.query.page || '1', 10);
-
-  if (page < 1) {
-    ctx.status = 400;
-    return;
-  }
-
   try {
     const users = await User.find({}, { name: 1, score: 1 })
       .sort({ score: -1 })
-      .limit(10)
-      .skip((page - 1) * 10)
+      .limit(30)
       .exec();
-    const userCount = await User.countDocuments({}).exec();
-    ctx.set('Last-Page', Math.ceil(userCount / 10));
     ctx.body = users.map((user) => user.toJSON());
   } catch (error) {
     ctx.throw(500, error);
@@ -45,7 +35,7 @@ export const adminList = async (ctx) => {
 
   try {
     const users = await User.find({})
-      .sort({ publishedDate: 1 })
+      .sort({ publishedDate: -1 })
       .limit(10)
       .skip((page - 1) * 10)
       .exec();
